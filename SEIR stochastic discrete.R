@@ -3,19 +3,20 @@
 ## Infectious period: 30% 3, 40% 4, 20% 5, 10% 6 days
 populationFractions <- c(0.06194508, 0.17698821, 0.59678721, 0.16427950) #UK 2011 data, age group ranges: 0-4, 5-19, 20-64, 65+
 populationLabels <- c("Ages 0-4", "Ages 5-19", "Ages 20-64", "Ages 65+")
-# This is the POLYMOD matrix for UK all contacts, regrouped
+## This is the POLYMOD matrix for UK all contacts, regrouped
 PolyMod_matrix <- matrix(nrow = 4, ncol = 4)
 PolyMod_matrix[1,] <- c(1.9200000, 0.5203550, 0.4761399, 0.1272683)
 PolyMod_matrix[2,] <- c(1.4867476, 8.7525691, 1.7676622, 0.7706686)
 PolyMod_matrix[3,] <- c(4.5871960, 5.9603867, 7.8770903, 3.5312914)
 PolyMod_matrix[4,] <- c(0.3375179, 0.7153304, 0.9720697, 1.8867659)
 
-# Matrix entry (row i, column j) denotes the number of potentially infectious contacts a single individual
-# from group j has with individuals from group i each day. This will be re-scaled to have spectral radius 1.
+## Matrix entry (row i, column j) denotes the number of potentially infectious contacts a single individual
+## from group j has with individuals from group i each day. This will be re-scaled to have spectral radius 1.
 contactMatrix <- PolyMod_matrix
 
 latentPeriods <- list(d1=.3,d2=.5,d3=.2) ## frequencies of latent period durations 1-3 days
 
+## Combinations of infectious/latent periods (discrete) are considered "types"
 infectiousPeriods <- list(d3=.3,d4=.4,d5=.2,d6=.1) ## frequencies of infectious durations 3-6 days
 MeaninfectiousPeriod <- sum(unlist(infectiousPeriods)*c(3:6))   ## Mean infectious period
 
@@ -23,42 +24,110 @@ MeaninfectiousPeriod <- sum(unlist(infectiousPeriods)*c(3:6))   ## Mean infectio
 Npop <- 310e6
 Npopag <- rmultinom(1,Npop,c(0.06194508, 0.17698821, 0.59678721, 0.16427950))
 
-## Creating pupulation according to latent (rows) and infectious periods (columns) in each of the age groups
-pop <- sapply(Npopag, function(nag) list(sapply(rmultinom(1,nag,c(.3,.5,.2)),function(x) sapply(x, function(y) rmultinom(1,y,c(.3,.4,.2,.1))))))
+## Creating population according to latent (rows) and infectious periods (columns) in each of the age groups
+population <- sapply(Npopag, function(nag) list(sapply(rmultinom(1,nag,c(.3,.5,.2)),function(x) sapply(x, function(y) rmultinom(1,y,c(.3,.4,.2,.1))))))
 
-pmat <- sapply(seq_along(pop),function(x) list(pop[[x]]/sum(pop[[x]])))
+pmat <- sapply(seq_along(population),function(x) list(population[[x]]/sum(population[[x]])))
 R0 <- 1.5
 beta <- R0 / MeaninfectiousPeriod / max(eigen(contactMatrix, 
                                               symmetric = FALSE, only.values = TRUE)$values)
 
 parameters <- list(beta=beta,latentPeriods=latentPeriods,infectiousPeriods=infectiousPeriods,
-                   pop=pop,pmat=pmat)
+                   population=population,pmat=pmat)
 
 seedInf <- 100 ## number infected at beginning
-E3init <- array(rmultinom(1,seedInf,pmat[[3]]),dim = c(4,3)) ## Infection only seeded in age group 3
+durEpidemic <- 300 ## Number of days in epidemic
 
-Sinit <- sapply(seq_along(pop),function(x) list(pop[[x]]*0))
-Einit <- list(pop[[1]]*0, pop[[2]]*0,E3init,pop[[4]]*0) 
-Iinit <- sapply(seq_along(pop),function(x) list(pop[[x]]*0))
-Rinit <- sapply(seq_along(pop),function(x) list(pop[[x]]*0))
+ag_seed <- 3 ## age group in which infection is seeded
 
-inits <- list(Sinit=Sinit,Einit=Einit,Iinit=Iinit,Rinit=Rinit)
+E_ag_seedinit <- array(rmultinom(1,seedInf,pmat[[ag_seed]]),dim = c(length(infectiousPeriods),length(latentPeriods))) ## Infection only seeded in the "seed" age group
 
-Ivec <- function(Iarr){
-  unlist(lapply(Iinit, function(x) sum(x)))
+# Has the numbers of individuals by "type" by day since infection
+Earr_list <-  lapply(population, function(x) lapply(seq_along(latentPeriods),function(x) array(0,dim = c(length(infectiousPeriods),x))))
+for (k in seq_along(latentPeriods)){
+  Earr_list[[ag_seed]][[k]][,1] <- E_ag_seedinit[,k]
 }
 
-pSE <- function(k,I){ ## k is age group, I is matrix of # infectious by latent/infectious time type
-  Ivec <- sapply(seq_along(I), function(x) sum(I[[x]]))
-  lambda <- contactMatrix[k,] %*% Ivec
+Einit <- lapply(seq_along(Earr_list), function(w) sapply(seq_along(Earr_list[[w]]),function(x) rowSums(Earr_list[[1]][[x]])))
+Sinit <- lapply(seq_along(population),function(x) population[[x]] - Einit[[x]])
+
+# Has the numbers of individuals by "type" by day since infection
+Iarr_list <-  lapply(population, function(x) lapply(seq_along(infectiousPeriods),function(x) array(0,dim = c(length(latentPeriods), x + (as.numeric(substring(names(infectiousPeriods)[1],2,2)) - 1)))))
+
+inits <- list(Sinit=Sinit,Earrlistinit=Earr_list,Iarr_listinit=Iarr_list)
+
+## Function to collect Earr_list into 
+pSE <- function(k,Iarr_list){ ## k is age group, I is matrix of # infectious by latent/infectious time type
+  I <- sapply(seq_along(Iarr_list), function(x) sum(unlist(Iarr_list[[x]])))
+  lambda <- contactMatrix[k,] %*% I/(sapply(seq_along(population), function(p) sum(population[[p]])) %*% contactMatrix[,k]) ## denominator has to be corrected
   return(as.numeric(1-exp(-lambda)))
 }
 
-flowEI <- function(k,E,I){
-  Ivec <- sapply(seq_along(I), function(x) sum(I[[x]]))
-  lambda <- contactMatrix[k,] %*% Ivec
-  return(as.numeric(1-exp(-lambda)))
+## Function for creating new infections per "type" - latent stage; all age groups
+## A list is returned, the first element being the new infections per age group/type, the reduced 
+## susceptibles and the newly infected (latent stage)
+newInfect <- function(Iarr_list,Sarr,Earr_list){
+  newinfList <- list()
+  Sarr2 <- Sarr
+  Earr_list2 <- Earr_list
+  for (k in seq_along(populationFractions)){
+    Sarr_ag <- Sarr[[k]]
+    Earr <- Earr_list2[[k]]
+    pinf <- pSE(k,Iarr_list)
+    newinf <- structure(vapply(Sarr_ag, function(x) rbinom(1,x,pinf), numeric(1)), dim=dim(Sarr_ag))
+    Earr_list2[[k]] <- sapply(seq_along(Earr), function(x) {Earr[[x]][,1] <- Earr[[x]][,1] + newinf[,x]; return(Earr[[x]])})
+    Sarr2[[k]] <- Sarr2[[k]] - newinf
+    newinfList[[k]] <- newinf
+  }
+  return(list(newinfList,Sarr2,Earr_list2))
 }
+
+dayProgI <- function(Earr_list,Iarr_list){
+  Iarr_list2 <- Iarr_list
+  for (k in seq_along(populationFractions)){
+    for (i in seq_along(infectiousPeriods)){
+      for (l in seq_along(latentPeriods)){
+        Iarr_list2[[k]][[i]][l,1] <- Earr_list[[k]][[l]][i,l]
+      }
+    }
+  }
+  return(Iarr_list2)
+} 
+
+dayProgE <- function(Earr_list){
+  Earr_list2 <- Earr_list
+  for(k in seq_along(populationFractions)){
+    for (l in seq_along(latentPeriods)){
+      if (l > 1){
+        Earr_list2[[k]][[l]] <- cbind(rep(0,length(infectiousPeriods)),Earr_list2[[k]][[l]][,1:(l - 1)])
+      } else {
+        Earr_list2[[k]][[l]] <- cbind(rep(0,length(infectiousPeriods)))
+      }
+    }
+  }
+  return(Earr_list2)
+}
+
+time <- 0
+newCases <- NULL
+Sarr <- inits$Sinit
+Earr_list <- inits$Earrlistinit
+Iarr_list <- inits$Iarrlistinit
+while (time < durEpidemic){
+  Iarr_list <- dayProgI(Earr_list,Iarr_list)
+  Earr_list <- dayProgE(Earr_list)
+  
+  outlist <- newInfect(Iarr_list,Sarr,Earr_list)
+  Sarr <- outlist[[2]]
+  Earr_list <- outlist[[3]]
+  newCases <- c(newCases,sum(unlist(outlist[[1]])))
+  
+  time <- time + 1
+}
+# plot(newCasese, type = 'l')
+######################################################################################################
+######################################################################################################
+
 
 SEIRModel2 <- function(population, populationFractions, contactMatrix, R0,
                       latentPeriod, infectiousPeriod, seedInfections, priorImmunity,
@@ -245,7 +314,7 @@ doSeed.SEIR <- function(state, parameters) {
     return(c(S, E, I, R))
   })
 }
-© 2018 GitHub, Inc.
+? 2018 GitHub, Inc.
 Terms
 Privacy
 Security
