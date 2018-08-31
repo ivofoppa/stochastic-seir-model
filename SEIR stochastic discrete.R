@@ -68,7 +68,7 @@ inits <- list(Sinit=Sinit,Earr_listinit=Earr_list,Iarr_listinit=Iarr_list)
 ## Function to collect Earr_list into 
 pSE <- function(Iarr_list){ ## k is age group, I is matrix of # infectious by latent/infectious time type
   I <- sapply(seq_along(Iarr_list), function(x) sum(unlist(Iarr_list[[x]])))
-  lambda <- beta / populationFractions * (contactMatrix %*% I) / Npopag
+  lambda <- beta * contactMatrix %*% (I/population)
   return (as.numeric(1-exp(-lambda)))
 }
 
@@ -142,11 +142,12 @@ while ( sim < nsim ){
   assign(paste0('newCases',sim),newCases)
 }
 
+totime <- 150
 cols <- rainbow(nsim)
-plot(1:100,newCases1[1:100], type = 'p',col = cols[1])
+plot(1:totime,newCases1[1:totime], type = 'l',col = cols[1])
 
 for (k in 2:nsim){
-  eval(parse(text = paste0('lines(1:100,newCases',k,'[1:100],col = cols[k], type = \"p\")')))
+  eval(parse(text = paste0('lines(1:totime,newCases',k,'[1:totime],col = cols[k], type = \"l\")')))
 }
 ######################################################################################################
 ######################################################################################################

@@ -21,18 +21,19 @@ infectiousPeriod <- 2.5
 delta <- 1 - exp(-1/infectiousPeriod)
 ## Construct population:
 Npop <- 310e6
-population <- rmultinom(1,Npop,c(0.06194508, 0.17698821, 0.59678721, 0.16427950))
+population <- rmultinom(1,Npop,populationFractions)
 
-R0 <- 2.2
+R0 <- 1.5
 beta <- R0 / infectiousPeriod / max(eigen(contactMatrix, 
                                               symmetric = FALSE, only.values = TRUE)$values)
 
 parameters <- list(beta=beta,latentPeriod=latentPeriod,infectiousPeriod=infectiousPeriod,
                    population=population,pmat=pmat)
 
-# seedInf <- c(100,100,100,100) ## number infected per age group  at beginning
 evec <- eigen(contactMatrix)$vectors[,1]
 seedInf <- round(evec/sum(evec)*1000) ## number infected per age group  at beginning
+#seedInf <- round(populationFractions*1000) ## number infected per age group  at beginning; compatible with SEIR model
+
 durEpidemic <- 300 ## Number of days in epidemic
 
 # Has the numbers of individuals by "type" by day since infection
@@ -47,7 +48,7 @@ inits <- list(Sinit=Sinit,Einit=Einit,Iinit=Iinit,Rinit=Rinit)
 
 ## Function to collect Earr_list into 
 pSE <- function(I){ ## k is age group, I is matrix of # infectious by latent/infectious time type
-  lambda <- beta / populationFractions * (contactMatrix %*% I) / population
+  lambda <- beta * contactMatrix %*% (I/population)
   return (as.numeric(1-exp(-lambda)))
 }
 
@@ -86,10 +87,10 @@ while ( sim < nsim ){
 }
 
 cols <- rainbow(nsim)
-plot(1:100,newCases1[1:100], type = 'l',col = cols[1])
+plot(newCases1[1:150], type = 'l',col = cols[1])
 
 for (k in 2:nsim){
-  eval(parse(text = paste0('lines(1:100,newCases',k,'[1:100],col = cols[k], type = \"l\")')))
+  eval(parse(text = paste0('lines(newCases',k,'[1:150],col = cols[k], type = \"l\")')))
 }
 ######################################################################################################
 ######################################################################################################
