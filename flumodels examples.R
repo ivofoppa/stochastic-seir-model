@@ -1,6 +1,6 @@
 library(flumodels)
 
-model <- SEIRModel(R0 = 1.5,
+model <- SEIRModel(R0 = 2.3,
                    latentPeriod = 1.5,
                    infectiousPeriod = 2.5,
                    seedInfections = 1000,
@@ -13,4 +13,4 @@ modelInfections <- getInfectionTimeSeries(model, byGroup = FALSE)
 
 selind <- which(modelTimes <= 150)
 plot(modelTimes[selind],modelInfections[selind],type = 'l')
-lines(modelTimes[selind],modelInfections[selind],type = 'l')
+lines(modelTimes[selind],modelInfections[selind],type = 'l',lwd = 2, col = 'blue')

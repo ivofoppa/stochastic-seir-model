@@ -23,7 +23,7 @@ delta <- 1 - exp(-1/infectiousPeriod)
 Npop <- 310e6
 population <- rmultinom(1,Npop,populationFractions)
 
-R0 <- 1.5
+R0 <- 2.5
 beta <- R0 / infectiousPeriod / max(eigen(contactMatrix, 
                                               symmetric = FALSE, only.values = TRUE)$values)
 
@@ -31,20 +31,19 @@ parameters <- list(beta=beta,latentPeriod=latentPeriod,infectiousPeriod=infectio
                    population=population,pmat=pmat)
 
 evec <- eigen(contactMatrix)$vectors[,1]
-seedInf <- round(evec/sum(evec)*1000) ## number infected per age group  at beginning
+seedInf <- round(populationFractions*1000) ## number infected per age group  at beginning
 #seedInf <- round(populationFractions*1000) ## number infected per age group  at beginning; compatible with SEIR model
 
 durEpidemic <- 300 ## Number of days in epidemic
 
 # Has the numbers of individuals by "type" by day since infection
 Einit <-  seedInf
-Sinit <- population - Einit
+Iinit <- seedInf
 
 # Has the numbers of individuals by "type" by day since infection
-Iinit <-  Sinit*0
-Rinit <-  Sinit*0
+Sinit <-  as.integer(population - Iinit - Einit)
 
-inits <- list(Sinit=Sinit,Einit=Einit,Iinit=Iinit,Rinit=Rinit)
+inits <- list(Sinit=Sinit,Einit=Einit,Iinit=Iinit)
 
 ## Function to collect Earr_list into 
 pSE <- function(I){ ## k is age group, I is matrix of # infectious by latent/infectious time type
@@ -59,16 +58,18 @@ nsim <- 10
 sim <- 0
 while ( sim < nsim ){
   time <- 0
-  newCases <- NULL
-  S <- inits$Sinit
-  E <- inits$Einit
-  I <- inits$Iinit
+
+  S <- as.integer(inits$Sinit)
+  E <- as.integer(inits$Einit)*0
+  I <- as.integer(inits$Iinit)
 
   Sls <-   NULL
   Els <-   NULL
   Ils <-   NULL
   
   while (time < durEpidemic){
+    pinf <- pSE(I)
+    
     newlat <- rbinom(4,S,pinf)
     newinf <- rbinom(4,E,gamma)
     newrem <- rbinom(4,I,delta)
@@ -77,8 +78,6 @@ while ( sim < nsim ){
     E <- E + newlat - newinf
     I <- I + newinf - newrem
     
-    newCases <- c(newCases,sum(newinf))
-    
     Sls <- c(Sls,sum(S))
     Els <- c(Els,sum(E))
     Ils <- c(Ils,sum(I))
@@ -86,16 +85,16 @@ while ( sim < nsim ){
     time <- time + 1
   }
   sim <- sim + 1
-  assign(paste0('newCases',sim),newCases)
+  assign(paste0('infectious',sim),Ils)
 }
 
 cols <- rainbow(nsim)
-plot(newCases1[1:150], type = 'l',col = cols[1])
+plot(infectious1[1:150], type = 'l',col = cols[1])
 
 #plot(Ils[1:150], type = 'l',col = cols[1])
 
 for (k in 2:nsim){
-  eval(parse(text = paste0('lines(newCases',k,'[1:150],col = cols[k], type = \"l\")')))
+  eval(parse(text = paste0('lines(infectious',k,'[1:150],col = cols[k], type = \"l\")')))
 }
 ######################################################################################################
 ######################################################################################################

@@ -17,20 +17,16 @@ specrad <- max(eigen(contactMatrix,
                      symmetric = FALSE, only.values = TRUE)$values)
 
 evec <- eigen(contactMatrix)$vectors[,1]
+evec <- evec/sum(evec)
 
 latentPeriod0 <- 1.5
-gamma <- 1 - exp(-1/latentPeriod)
 
 infectiousPeriod0 <- 2.5
-delta <- 1 - exp(-1/infectiousPeriod)
 ## Construct population:
 populationData <- read.table('pop_reg5.dat',header = T)
 
 ## ORder of appearance of flu 
-HHS_order <- c(9,2,3,1,4,5,10,6,8,7)
-seedInf <- rev(c(10,20,30,100,500,1000,2000,3000,5000,11660))
-HHSseedInf <- lapply(seq_along(HHS_order), function(x) rmultinom(1,seedInf[x],evec)) ## number infected per age group  at beginning
-names(HHSseedInf) <- sapply(HHS_order,function(x) toString(x))
+seedInf <- rev(c(100,200,300,500,500,1000,2000,3000,5000,7400))
 
 durEpidemic <- 300 ## Number of days in epidemic
 
@@ -47,12 +43,19 @@ R0maxls <- sapply(R0minls, function(x) runif(1,x,2.2))
 for (k in seq_along(R0minls)){
   HHS_order <- sample(1:10,10)
 
-  infectiousPeriod <- runif(1,infectiousPeriod0-.5,infectiousPeriod0-.5)
-  latentPeriod <- runif(1,latentPeriod0-.5,latentPeriod0-.5)
+  HHSseedInf <- lapply(HHS_order, function(x) rmultinom(1,seedInf[x],evec)) ## number infected per age group  at beginning
+  names(HHSseedInf) <- sapply(1:10,function(x) toString(x))
+
+  infectiousPeriod <- runif(1,infectiousPeriod0-.5,infectiousPeriod0 + .5)
+  latentPeriod <- runif(1,latentPeriod0-.5,latentPeriod0 + .5)
+
+  delta <- 1 - exp(-1/infectiousPeriod)
+  gamma <- 1 - exp(-1/latentPeriod)
+  
   R0min <- R0minls[k]
   R0max <- R0maxls[k]
 
-  corr <- round(runif(1,34-30,34+30))
+  corr <- round(runif(1,34-30,34+30)) ## Random peak R0 between ~ Dec 15 and Feb 15
   r0 <- function(t,R0min,R0max){
     y <- (sin((t - corr)/365 * 2 * pi ) + 1) / 2 * (R0max - R0min)
     return(y + R0min)
@@ -70,7 +73,7 @@ for (k in seq_along(R0minls)){
   }
   
   Itotls <- rep(0,durEpidemic)
-  for (hhs in HHS_order){
+  for (hhs in 1:10){
     Einit <-  HHSseedInf[[hhs]]
     Iinit <-  Einit
     population <- as.numeric(populationData[hhs,2:5])
@@ -115,16 +118,23 @@ for (k in seq_along(R0minls)){
 }
 
 allItotls <- NULL
+
 for (k in 1:nsim){
 allItotls <- c(allItotls,eval(parse(text = paste0('Itotls',k))))  
 }
 
-plot(Itotls1[1:100], type = 'l',col = 'red',ylim = c(0,max(allItotls)),xlab = 'Outbreak week',ylab = 'Number infectious')
+sumItotls <- rep(0,length(Itotls1))
+for (k in 1:nsim){
+  sumItotls <- sumItotls + eval(parse(text = paste0('Itotls',k)))
+}
+selind <- which(sumItotls/nsim > 1000)
+
+plot(Itotls1[selind], type = 'l',col = 'red',ylim = c(0,max(allItotls)),xlab = 'Outbreak Day',ylab = 'Number Infectious')
 
 cols <- rainbow(nsim)
 
 for (k in 2:nsim){
-  eval(parse(text = paste0('lines(Itotls',k,'[1:150],col = cols[k], type = \"l\")')))
+  eval(parse(text = paste0('lines(Itotls',k,'[selind],col = cols[k], type = \"l\")')))
 }
 ######################################################################################################
   ######################################################################################################
