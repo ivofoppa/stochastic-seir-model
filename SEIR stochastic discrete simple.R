@@ -60,12 +60,15 @@ sim <- 0
 while ( sim < nsim ){
   time <- 0
   newCases <- NULL
-  Sls <- S <- inits$Sinit
-  Els <- E <- inits$Einit
-  Ils <- I <- inits$Iinit
+  S <- inits$Sinit
+  E <- inits$Einit
+  I <- inits$Iinit
+
+  Sls <-   NULL
+  Els <-   NULL
+  Ils <-   NULL
   
   while (time < durEpidemic){
-    pinf <- pSE(I)
     newlat <- rbinom(4,S,pinf)
     newinf <- rbinom(4,E,gamma)
     newrem <- rbinom(4,I,delta)
@@ -76,9 +79,9 @@ while ( sim < nsim ){
     
     newCases <- c(newCases,sum(newinf))
     
-    Sls <- rbind(Sls,S)
-    Els <- rbind(Els,E)
-    Ils <- rbind(Ils,I)
+    Sls <- c(Sls,sum(S))
+    Els <- c(Els,sum(E))
+    Ils <- c(Ils,sum(I))
     
     time <- time + 1
   }
@@ -88,6 +91,8 @@ while ( sim < nsim ){
 
 cols <- rainbow(nsim)
 plot(newCases1[1:150], type = 'l',col = cols[1])
+
+#plot(Ils[1:150], type = 'l',col = cols[1])
 
 for (k in 2:nsim){
   eval(parse(text = paste0('lines(newCases',k,'[1:150],col = cols[k], type = \"l\")')))
