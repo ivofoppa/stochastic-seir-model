@@ -26,52 +26,51 @@ infectiousPeriod0 <- 2.5
 populationData <- read.table('pop_reg5.dat',header = T)
 
 ## ORder of appearance of flu 
-seedInf <- rev(c(100,200,300,500,500,1000,2000,3000,5000,7400))
+## Seed cases of flu, by HHS
+seedInf <- rep(10,10)
+seedInf[c(2,6)] <- 500
+seedInf[c(3,4)] <- 50
 
 durEpidemic <- 300 ## Number of days in epidemic
 
 ## September 12 is day 255 of the year--day one of model; assume Maximum R0 on Jan 15 (day 125 of model); 
+r0 <- function(t,R0min,R0max,corr){
+  y <- (sin((t - corr)/365 * 2 * pi ) + 1) / 2 * (R0max - R0min)
+  return(y + R0min)
+}
+
+beta <- function(t,R0min,R0max,corr) {
+  r0(t,R0min,R0max,corr) / infectiousPeriod / specrad
+}
+
+# Has the numbers of individuals by "type" by day since infection
+## Function to collect Earr_list into 
+pSE <- function(t,I,population,R0min,R0max,corr){ ## k is age group, I is matrix of # infectious by latent/infectious time type
+  lambda <- beta(t,R0min,R0max,corr) * contactMatrix %*% as.numeric(I/population)
+  return (as.numeric(1-exp(-lambda)))
+}
 
 ## Function for creating new infections per "type" - latent stage; all age groups
 ## A list is returned, the first element being the new infections per age group/type, the reduced 
 ## susceptibles and the newly infected (latent stage)
 nsim <- 10
 
-R0minls <- runif(nsim,1.9,2.2)
-R0maxls <- sapply(R0minls, function(x) runif(1,x,2.2))
+for (sim in 1:nsim){
+  R0minls <- runif(10,1.5,2.2)
+  R0maxls <- sapply(R0minls, function(x) runif(1,x,2.4))
+  
+  corrls <- round(runif(10,64-30,64+30)) ## Random peak R0 between ~ Dec 15 and Feb 15
 
-for (k in seq_along(R0minls)){
-  HHS_order <- sample(1:10,10)
-
-  HHSseedInf <- lapply(HHS_order, function(x) rmultinom(1,seedInf[x],evec)) ## number infected per age group  at beginning
-  names(HHSseedInf) <- sapply(1:10,function(x) toString(x))
-
-  infectiousPeriod <- runif(1,infectiousPeriod0-.5,infectiousPeriod0 + .5)
+    generationTime <- runif(1,3.8,4.5)
   latentPeriod <- runif(1,latentPeriod0-.5,latentPeriod0 + .5)
-
-  delta <- 1 - exp(-1/infectiousPeriod)
   gamma <- 1 - exp(-1/latentPeriod)
+  
+  infectiousPeriod <- generationTime - latentPeriod
+  delta <- 1 - exp(-1/infectiousPeriod)
   
   R0min <- R0minls[k]
   R0max <- R0maxls[k]
-
-  corr <- round(runif(1,34-30,34+30)) ## Random peak R0 between ~ Dec 15 and Feb 15
-  r0 <- function(t,R0min,R0max){
-    y <- (sin((t - corr)/365 * 2 * pi ) + 1) / 2 * (R0max - R0min)
-    return(y + R0min)
-  }
-  
-  beta <- function(t,R0min,R0max) {
-    r0(t,R0min,R0max) / infectiousPeriod / specrad
-  }
-  
-  # Has the numbers of individuals by "type" by day since infection
-  ## Function to collect Earr_list into 
-  pSE <- function(t,I,population,R0min,R0max){ ## k is age group, I is matrix of # infectious by latent/infectious time type
-    lambda <- beta(t,R0min,R0max) * contactMatrix %*% as.numeric(I/population)
-    return (as.numeric(1-exp(-lambda)))
-  }
-  
+  corr <- corrls[k]
   Itotls <- rep(0,durEpidemic)
   for (hhs in 1:10){
     Einit <-  HHSseedInf[[hhs]]
@@ -95,7 +94,7 @@ for (k in seq_along(R0minls)){
     Ils <-   NULL
     
     while (time < durEpidemic){
-      pinf <- pSE(time,I,population,R0min,R0max)
+      pinf <- pSE(time,I,population,R0min,R0max,corr)
       newlat <- rbinom(4,S,pinf)
       newinf <- rbinom(4,E,gamma)
       newrem <- rbinom(4,I,delta)

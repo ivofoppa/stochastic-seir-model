@@ -21,110 +21,47 @@ evec <- eigen(contactMatrix)$vectors[,1]
 ## Construct population:
 populationData <- read.table('pop_reg5.dat',header = T)
 
-## ORder of appearance of flu 
-HHS_order <- sample(1:10,10)
-
-seedInf <- c(100,200,300,500,500,1000,2000,3000,5000,7400)
-
-durEpidemic <- 300 ## Number of days in epidemic
-
-HHSseedInf <- lapply(seq_along(HHS_order), function(x) rmultinom(1,seedInf[x],evec)) ## number infected per age group  at beginning
-names(HHSseedInf) <- sapply(HHS_order,function(x) toString(x))
-
-latentPeriod <- runif(1,1.3,1.7)
-
-lp3 <- -1
-while (lp3 < 0){
-  lp1 <- runif(1,.1,.9)
-  lp2 <- (latentPeriod - 3 + 2*lp1)/(-1)
-  lp3 <- 1 - lp1 - lp2
-}
-
-latentPeriods <- list(d1=lp1,d2=lp2,d3=lp3) ## frequencies of latent period durations 1-3 days
-
-## Combinations of infectious/latent periods (discrete) are considered "types"
-infectiousPeriod <- runif(1,2.2,2.8)
-
-ip4 <- -1; ip3 <- -1
-while (ip4 < 0 | ip4 > 1 | ip3 < 0 | ip3 > 1 ){
-  ip1 <- runif(1,0,.9)
-  ip2 <- runif(1,0,1 - ip1)
-  ip3 <- 4 - infectiousPeriod - 3*ip1 - 2*ip2
-  ip4 <- 1 - ip1 - ip2 - ip3
-}
-
-infectiousPeriods <- list(d1=ip1,d2=ip2,d3=ip3,d4=ip4) ## frequencies of infectious durations 3-6 days
-
-## Construct population:
-populationData <- read.table('pop_reg5.dat',header = T)
-
 ## Creating population according to latent (rows) and infectious periods (columns) in each of the age groups
-
-nsim <- 10
-
-R0minls <- runif(nsim,1.5,2.2)
-R0maxls <- sapply(R0minls, function(x) runif(1,x,2.2))
-
-
-## Infection only seeded in the "seed" age group
-population <- populationData[3,2:5]
-
-E_ag_seedinit <- list()
-for (ag in 1:4){
-  E_ag_seedinit[[ag]] <- array(rmultinom(1,seedInf[ag],pmat[[ag]]),dim = c(length(infectiousPeriods),length(latentPeriods))) 
+r0 <- function(t,R0min,R0max,corr){
+  y <- (sin((t - corr)/365 * 2 * pi ) + 1) / 2 * (R0max - R0min)
+  return(y + R0min)
 }
 
-# Has the numbers of individuals by "type" by day since infection
-Earr_list <-  lapply(population, function(x) lapply(seq_along(latentPeriods),function(x) array(0,dim = c(length(infectiousPeriods),x))))
-
-for (ag in seq_along(populationFractions)){
-  for (k in seq_along(latentPeriods)){
-    Earr_list[[ag]][[k]][,1] <- E_ag_seedinit[[ag]][,k]
-  }
+beta <- function(t,R0min,R0max,corr) {
+  r0(t,R0min,R0max,corr) / infectiousPeriod / specrad
 }
 
-Einit <- lapply(seq_along(Earr_list), function(w) sapply(seq_along(Earr_list[[w]]),function(x) rowSums(Earr_list[[1]][[x]])))
-Sinit <- lapply(seq_along(population),function(x) population[[x]] - Einit[[x]])
 
-# Has the numbers of individuals by "type" by day since infection
-Iarr_list <-  lapply(population, function(x) lapply(seq_along(infectiousPeriods),function(x) array(0,dim = c(length(latentPeriods), x + (as.numeric(substring(names(infectiousPeriods)[1],2,2)) - 1)))))
-
-inits <- list(Sinit=Sinit,Earr_listinit=Earr_list,Iarr_listinit=Iarr_list)
-
-## Function to collect Earr_list into 
-pSE <- function(Iarr_list){ ## k is age group, I is matrix of # infectious by latent/infectious time type
-  I <- sapply(seq_along(Iarr_list), function(x) sum(unlist(Iarr_list[[x]])))
-  lambda <- beta * contactMatrix %*% (I/population)
+pSE <- function(t,Iarr_list,typePopulation,R0min,R0max,corr){ ## k is age group, I is matrix of # infectious by latent/infectious time type
+  I <- sapply(1:4, function(x) sum(unlist(Iarr_list[[x]])))
+  pop <- sapply(1:4, function(x) sum(typePopulation[[x]]))
+  lambda <- beta(t,R0min,R0max,corr) * contactMatrix %*% as.numeric(I/pop)
   return (as.numeric(1-exp(-lambda)))
 }
 
-## Function for creating new infections per "type" - latent stage; all age groups
-## A list is returned, the first element being the new infections per age group/type, the reduced 
-## susceptibles and the newly infected (latent stage)
-newInfect <- function(Iarr_list,Sarr,Earr_list){
+newInfect <- function(t,Iarr_list,Sarr,Earr_list,typePopulation,R0min,R0max,corr){
   newinfList <- list()
   Sarr2 <- Sarr
   Earr_list2 <- Earr_list
-  pinfls <- pSE(Iarr_list)
-  for (k in seq_along(populationFractions)){
-    Sarr_ag <- Sarr[[k]]
-    Earr <- Earr_list2[[k]]
-    pinf <- pinfls[[k]]
+  pinfls <- pSE(t,Iarr_list,typePopulation,R0min,R0max,corr)
+  for (ag in 1:4){
+    Sarr_ag <- Sarr[[ag]]
+    Earr <- Earr_list2[[ag]]
+    pinf <- pinfls[[ag]]
     newinf <- structure(vapply(Sarr_ag, function(x) rbinom(1,x,pinf), numeric(1)), dim=dim(Sarr_ag))
-    Earr_list2[[k]] <- sapply(seq_along(Earr), function(x) {Earr[[x]][,1] <- Earr[[x]][,1] + newinf[,x]; return(Earr[[x]])})
-    Sarr2[[k]] <- Sarr2[[k]] - newinf
-    newinfList[[k]] <- newinf
+    Earr_list2[[ag]] <- sapply(seq_along(Earr), function(x) {Earr[[x]][,1] <- Earr[[x]][,1] + newinf[,x]; return(Earr[[x]])})
+    Sarr2[[ag]] <- Sarr2[[ag]] - newinf
+    newinfList[[ag]] <- newinf
   }
-  return(list(newinfList,Sarr2,Earr_list2))
+  return(list(Sarr2,Earr_list2,newinfList))
 }
 
 dayProgI <- function(Earr_list,Iarr_list){
   Iarr_list2 <- Iarr_list
-  for (k in seq_along(populationFractions)){
-    for (i in seq_along(infectiousPeriods)){
-      for (l in seq_along(latentPeriods)){
-        Iarr_list2[[k]][[i]][l,1] <- Earr_list[[k]][[l]][i,l]
-      }
+  for (ag in 1:4){
+    for (i in 1:4){
+      newinf <- sapply(1:3,function(l) Earr_list[[ag]][[l]][i,l])
+      Iarr_list2[[ag]][[i]] <- cbind(newinf,Iarr_list2[[ag]][[i]][,1:i-1],deparse.level = 0)
     }
   }
   return(Iarr_list2)
@@ -132,248 +69,200 @@ dayProgI <- function(Earr_list,Iarr_list){
 
 dayProgE <- function(Earr_list){
   Earr_list2 <- Earr_list
-  for(k in seq_along(populationFractions)){
-    for (l in seq_along(latentPeriods)){
+  for(ag in 1:4){
+    for (l in 1:3){
       if (l > 1){
-        Earr_list2[[k]][[l]] <- cbind(rep(0,length(infectiousPeriods)),Earr_list2[[k]][[l]][,1:(l - 1)])
+        Earr_list2[[ag]][[l]] <- cbind(rep(0,length(infectiousPeriods)),Earr_list2[[ag]][[l]][,1:(l - 1)])
       } else {
-        Earr_list2[[k]][[l]] <- cbind(rep(0,length(infectiousPeriods)))
+        Earr_list2[[ag]][[l]] <- cbind(rep(0,length(infectiousPeriods)))
       }
     }
   }
   return(Earr_list2)
 }
 
+
+HHStypePopulation <- list()
+
+for (hhs in 1:10){
+  ls <- sapply(1:4, function(nag) list(sapply(rmultinom(1,populationData[hhs,nag+1],latentPeriods),function(x) sapply(x, function(y) rmultinom(1,y,infectiousPeriods)))))
+  HHStypePopulation[[hhs]] <- ls
+}
+
+HHSpmat <- list()
+for (hhs in 1:10){
+  typePopulation <- HHStypePopulation[[hhs]]
+  HHSpmat[[hhs]] <- sapply(1:4,function(x) list(typePopulation[[x]]/sum(typePopulation[[x]])))
+}
+
+## Seed cases of flu, by HHS
+seedInf <- rep(10,10)
+seedInf[c(2,6)] <- 500
+seedInf[c(3,4)] <- 50
+
+durEpidemic <- 300
 nsim <- 10
-sim <- 0
-while ( sim < nsim ){
-  time <- 0
-  Ils <- NULL
-  Sarr <- inits$Sinit
-  Earr_list <- inits$Earr_listinit
-  Iarr_list <- inits$Iarr_listinit
-  while (time < durEpidemic){
-    outlist <- newInfect(Iarr_list,Sarr,Earr_list)
-    Sarr <- outlist[[2]]
-    Earr_list <- outlist[[3]]
-    newCases <- c(newCases,sum(unlist(outlist[[1]])))
+colls <- rainbow(nsim)
 
-    Iarr_list <- dayProgI(Earr_list,Iarr_list)
-    Earr_list <- dayProgE(Earr_list)
-    
-    
-    time <- time + 1
-  }
-  sim <- sim + 1
-  assign(paste0('newCases',sim),newCases)
-}
-
-totime <- 150
-cols <- rainbow(nsim)
-plot(1:totime,newCases1[1:totime], type = 'l',col = cols[1])
-
-for (k in 2:nsim){
-  eval(parse(text = paste0('lines(1:totime,newCases',k,'[1:totime],col = cols[k], type = \"l\")')))
-}
-######################################################################################################
-######################################################################################################
-
-
-SEIRModel2 <- function(population, populationFractions, contactMatrix, R0,
-                      latentPeriod, infectiousPeriod, seedInfections, priorImmunity,
-                      useCommunityMitigation, communityMitigationStartDay,
-                      communityMitigationDuration, communityMitigationMultiplier,
-                      simulationLength, seedStartDay, tolerance, method) {
-  #Check inputs
-  specifiedArguments <- names(match.call())[-1]
-  argumentList <- lapply(specifiedArguments, as.name)
-  names(argumentList) <- specifiedArguments
-  parameters <- do.call("checkInputs.SEIR", argumentList) #Get parameters from checked inputs
+simLatentPeriods <- simInfectiousPeriods <- NULL
+for (sim in 1:10){
+  latentPeriod <- runif(1,1.3,1.7)
   
-  initialState <- with(parameters, {
-    c(S  = (1 - priorImmunity) * populationFractions,
-      E  = 0 * populationFractions,
-      I  = 0 * populationFractions,
-      R  = priorImmunity * populationFractions)
-  })
-  
-  rawOutput <- integrateModel(initialState = initialState,
-                              parameters = parameters,
-                              derivativeFunction = getDerivative.SEIR,
-                              seedFunction = doSeed.SEIR)
-  
-  #Build the SEIRModel object to return
-  model <- list(parameters = parameters,
-                rawOutput = rawOutput)
-  class(model) <- "SEIRModel"
-  return(model)
-}
-
-#' @title Check SEIR inputs
-#' @description Checks the input parameters for the SEIR model
-#' @return List of parameters for the SEIR model
-#' @keywords internal
-checkInputs.SEIR <- function(population = 1, populationFractions = 1, contactMatrix, R0,
-                             latentPeriod, infectiousPeriod, seedInfections = 0, priorImmunity = 0,
-                             useCommunityMitigation = FALSE, communityMitigationStartDay, 
-                             communityMitigationDuration, communityMitigationMultiplier, 
-                             simulationLength = 240, seedStartDay = 0, tolerance = 1e-8, method = "lsoda", ...) {
-  #population
-  checkPositiveNumber(population)
-  #populationFractions
-  if (!((abs(sum(populationFractions) - 1) < tolerance) && all(populationFractions >= 0))) {
-    stop("populationFractions must be positive and sum to 1.", call. = FALSE)
-  }
-  populationFractions <- as.vector(populationFractions) #Drop names to prevent errors in internal data storage
-  #contactMatrix
-  if (missing(contactMatrix)) { #If contact matrix is not supplied, default to proportional mixing
-    contactMatrix <- as.matrix(populationFractions)[ , rep(1, length(populationFractions)), drop = FALSE]
-  } else {
-    if (!(all(contactMatrix >=0) && (ncol(contactMatrix) == nrow(contactMatrix))))  {
-      stop("contactMatrix must be square and non-negative.", call. = FALSE)
-    }
-    if (length(populationFractions) != ncol(contactMatrix)) {
-      stop("contactMatrix dimensions do not match populationFractions.", call. = FALSE)
-    }
-  } 
-  #R0
-  if (missing(R0)) {
-    stop("R0 must be specified.", call. = FALSE)
-  }
-  checkPositive(R0)
-  #latentPeriod
-  if (missing(latentPeriod)) {
-    stop("latentPeriod must be specified.", call. = FALSE)
-  }
-  checkPositive(latentPeriod)
-  #infectiousPeriod
-  if (missing(infectiousPeriod)) {
-    stop("infectiousPeriod must be specified.", call. = FALSE)
-  }
-  checkPositive(infectiousPeriod)
-  #seedInfections
-  checkNonNegative(seedInfections)
-  checkDimensionsMatch(seedInfections, populationFractions)
-  if (length(seedInfections) == 1) {
-    if (seedInfections > population) {
-      stop("seedInfections can not exceed the population.", call. = FALSE)
-    }
-    seedInfections <- seedInfections * populationFractions #Distribute seed infections among population groups proportionately
-  } else if (!all(seedInfections <= (population * populationFractions))) {
-    stop("seedInfections can not exceed the population by group.", call. = FALSE)
-  }
-  #priorImmunity
-  checkBetween0and1(priorImmunity)
-  checkDimensionsMatch(priorImmunity, populationFractions)
-  #Community Mitigation
-  if (useCommunityMitigation) {
-    if (missing(communityMitigationStartDay)) {
-      stop("communityMitigationStartDay must be specified when using community mitigation.", 
-           call. = FALSE)
-    }
-    checkNonNegative(communityMitigationStartDay)
-    if (missing(communityMitigationDuration)) {
-      stop("communityMitigationDuration must be specified when using community mitigation.", 
-           call. = FALSE)
-    }
-    checkNonNegative(communityMitigationStartDay)
-    if (missing(communityMitigationMultiplier)) {
-      stop("communityMitigationMultiplier must be specified when using community mitigation.", 
-           call. = FALSE)
-    }
-    if (!all(dim(communityMitigationMultiplier) == dim(contactMatrix))) {
-      stop("Dimensions of communityMitigationMultiplier do not match those of contactMatrix", 
-           call. = FALSE)
-    }
-    checkNonNegative(communityMitigationMultiplier)
+  lp3 <- -1; lp2 <- -1
+  while (lp3 < 0 | lp3 > 1 | lp2 < 0 | lp2 > 1 ){
+    lp1 <- runif(1,.1,.9)
+    lp2 <- (latentPeriod - 3 + 2*lp1)/(-1)
+    lp3 <- 1 - lp1 - lp2
   }
   
-  #Collect and return the parameters
-  parameters <- list(population = population,
-                     populationFractions = populationFractions,
-                     contactMatrix = contactMatrix,
-                     beta = R0 / infectiousPeriod / max(Mod(eigen(contactMatrix, symmetric = FALSE, only.values = TRUE)$values)),
-                     gamma = 1 / infectiousPeriod,
-                     lambda = 1 / latentPeriod,
-                     seedInfections = seedInfections,
-                     priorImmunity = priorImmunity,
-                     useCommunityMitigation = useCommunityMitigation,
-                     simulationLength = simulationLength,
-                     seedStartDay = seedStartDay,
-                     tolerance = tolerance,
-                     method = method)
-  if (useCommunityMitigation) {
-    parameters <- append(parameters,
-                         list(communityMitigationStartDay = communityMitigationStartDay, 
-                              communityMitigationEndDay = communityMitigationStartDay + communityMitigationDuration,
-                              communityMitigationMultiplier = communityMitigationMultiplier))
+  latentPeriods <- c(lp1,lp2,lp3) ## frequencies of latent period durations 1-3 days
+  
+  ## Combinations of infectious/latent periods (discrete) are considered "types"
+  infectiousPeriod <- runif(1,2.2,2.8)
+  
+  ip4 <- -1; ip3 <- -1
+  while (ip4 < 0 | ip4 > 1 | ip3 < 0 | ip3 > 1 ){
+    ip1 <- runif(1,0,.9)
+    ip2 <- runif(1,0,1 - ip1)
+    ip3 <- 4 - infectiousPeriod - 3*ip1 - 2*ip2
+    ip4 <- 1 - ip1 - ip2 - ip3
   }
-  return(parameters)
+  
+  infectiousPeriods <- c(ip1,ip2,ip3,ip4) ## frequencies of infectious durations 3-6 days
+  
+  simLatentPeriods <- rbind(simLatentPeriods,latentPeriods,deparse.level = 0)
+  simInfectiousPeriods <- rbind(simInfectiousPeriods,infectiousPeriods,deparse.level = 0)
 }
 
-#This is a utility function that reconstructs the model state as a list so that equations can refer to compartments by name
-reconstructState.SEIR <- function(state) {
-  numberOfClasses <- length(state)/4 #Each of the 4 classes are vectors of the same length
-  S  <- state[                       1 :     numberOfClasses ]
-  E  <- state[    (numberOfClasses + 1):(2 * numberOfClasses)]
-  I  <- state[(2 * numberOfClasses + 1):(3 * numberOfClasses)]
-  R  <- state[(3 * numberOfClasses + 1):(4 * numberOfClasses)]
-  return(as.list(environment()))
-}
+# Has the numbers of individuals by "type" by day since infection
+Itotarr <- NULL
+for (sim in 1:nsim){
 
-#This function implements the multivariate derivative of the SEIR model
-#parameters should define populationFractions, normalizedContactMatrix, beta, lambda, and gamma
-#Note that the total population is normalized to be 1
-getDerivative.SEIR <- function(t, state, parameters) {
-  stateList <- reconstructState.SEIR(state)
-  with(append(stateList, parameters), {
-    if (useCommunityMitigation) {
-      if ((t >= communityMitigationStartDay) && (t < communityMitigationEndDay)) {
-        contactMatrix <- communityMitigationMultiplier * contactMatrix
-      } 
+  R0minls <- runif(10,1.5,2.2)
+  R0maxls <- sapply(R0minls, function(x) runif(1,x,2.4))
+  
+  corrls <- round(runif(10,64-30,64+30)) ## Random peak R0 between ~ Dec 15 and Feb 15
+  
+  latentPeriods <- simLatentPeriods[sim,]
+  infectiousPeriods <- simInfectiousPeriods[sim,]
+  
+  HHSEarr_list_init <-  lapply(1:10, function(hhs) lapply(HHStypePopulation[[hhs]], function(x) lapply(1:3,function(l) array(0,dim = c(length(infectiousPeriods),l)))))
+  HHSIarr_list_init <-  lapply(1:10, function(hhs) lapply(HHStypePopulation[[hhs]], function(x) lapply(1:4,function(i) array(0,dim = c(length(latentPeriods),i)))))
+  
+  HHSseedInf <- lapply(1:10, function(x) rmultinom(1,seedInf[x],evec)) ## number infected per age group  at beginning
+  names(HHSseedInf) <- sapply(1:10,function(x) toString(x))
+  
+  HHS_ag_seedinit <- list()
+  for (hhs in 1:10){
+    pmat <- HHSpmat[[hhs]]
+    ag_seedinit <- list()
+    for (ag in 1:4){
+      ag_seedinit[[ag]] <- array(rmultinom(1,HHSseedInf[[hhs]][ag],pmat[[ag]]),dim = c(length(infectiousPeriods),length(latentPeriods))) 
     }
-    #Flows
-    forceOfInfection <- beta / populationFractions * (contactMatrix %*% I)
+    HHS_ag_seedinit[[hhs]] <- ag_seedinit
+  }
+  
+  for (hhs in 1:10){
+    Earr_list_init <- HHSEarr_list_init[[hhs]]
+    ag_seedinit <- HHS_ag_seedinit[[hhs]]
+    for (ag in 1:4){
+      for (l in 1:3){
+        Earr_list_init[[ag]][[l]][,1] <- ag_seedinit[[ag]][,l]
+      }
+    }
+    HHSEarr_list_init[[hhs]] <- Earr_list_init
+  }
+  
+  parameters <- list(HHSEarr_list_init=HHSEarr_list_init,HHSIarr_list_init=HHSIarr_list_init,
+                     corrls=corrls,R0minls=R0minls,R0maxls=R0maxls,HHStypePopulation=HHStypePopulation,
+                     HHS_ag_seedinit=HHS_ag_seedinit)
+  
+  # hhs <- 2
+  HHSIarr <- NULL
+  
+  
+  for (hhs in 1:10){
     
-    S_to_E <- S * forceOfInfection
-    E_to_I <- lambda * E
-    I_to_R <- gamma * I
+    typePopulation <- HHStypePopulation[[hhs]]
     
-    #Derivatives
-    dS <- -S_to_E
-    dE <- S_to_E - E_to_I
-    dI <- E_to_I - I_to_R
-    dR <- I_to_R
+    Earr_list_init <- HHSEarr_list_init[[hhs]]
+    Iarr_list_init <- HHSIarr_list_init[[hhs]]
     
-    #Return derivative
-    return(list(c(dS, dE, dI, dR)))
-  })
+    E_init <- list()
+    for (ag in 1:4){
+      mat <- NULL
+      for (l in 1:3){
+        mat <- cbind(mat,rowSums(Earr_list_init[[ag]][[l]]))
+      }
+      E_init[[ag]] <- mat
+    }
+    
+    I_init <- list()
+    for (ag in 1:4){
+      mat <- NULL
+      for (i in 1:4){
+        mat <- rbind(mat,rowSums(Iarr_list_init[[ag]][[i]]))
+      }
+      I_init[[ag]] <- mat
+    }
+    
+    Sarr_init <- lapply(1:4,function(ag) typePopulation[[ag]] - E_init[[ag]] - I_init[[ag]])
+    
+    time <- 1
+    Ils <- NULL
+    
+    Earr_list <- parameters$HHSEarr_list_init[[hhs]]
+    Iarr_list <- parameters$HHSIarr_list_init[[hhs]]
+    
+    E_init <- list()
+    for (ag in 1:4){
+      mat <- NULL
+      for (l in 1:3){
+        mat <- cbind(mat,rowSums(Earr_list[[ag]][[l]]))
+      }
+      E_init[[ag]] <- mat
+    }
+    
+    I_init <- list()
+    for (ag in 1:4){
+      mat <- NULL
+      for (i in 1:4){
+        mat <- rbind(mat,rowSums(Iarr_list[[ag]][[i]]))
+      }
+      I_init[[ag]] <- mat
+    }
+    
+    typePopulation <- parameters$HHStypePopulation[[hhs]]
+    Sarr <- lapply(1:4, function(x) typePopulation[[x]] - I_init[[x]] - E_init[[x]]) 
+    
+    R0min <- R0minls[hhs]
+    R0max <- R0maxls[hhs]
+    corr <- corrls[hhs]
+    
+    while (time <= durEpidemic){
+      outlist <- newInfect(t=time,Iarr_list,Sarr,Earr_list,typePopulation,R0min,R0max,corr)
+      Sarr <- outlist[[1]]
+      Earr_list <- outlist[[2]]
+      
+      Iarr_list <- dayProgI(Earr_list,Iarr_list)
+      Earr_list <- dayProgE(Earr_list)
+      Ils <- c(Ils,sum(unlist(Iarr_list)))
+      
+      time <- time + 1
+    }
+    HHSIarr <- rbind(HHSIarr,Ils,deparse.level = 0)
+  }
+  Itotls <- colSums(HHSIarr)
+  Itotarr <- rbind(Itotarr,Itotls, deparse.level = 0)
 }
 
-#This function implements seeding infections in the SEIR model
-#parameters should define seedInfections, lambda, and gamma
-#Note that the total population is normalized to be 1
-doSeed.SEIR <- function(state, parameters) {
-  stateList <- reconstructState.SEIR(state)
-  with(append(stateList, parameters), {
-    seedInfectionsFractions <- seedInfections / population
-    S <- S - seedInfectionsFractions
-    E <- E + seedInfectionsFractions / (1 + lambda / gamma)
-    I <- I + seedInfectionsFractions / (1 + gamma / lambda)
-    #Return derivative
-    return(c(S, E, I, R))
-  })
+maxy <- max(Itotarr)
+xlim <- 150
+
+colls <- rainbow(nsim)
+
+plot(Itotarr[1,1:xlim],type = 'l',col = colls[1],lwd = 2,ylim = c(0,maxy),xlab = 'Outbreak Day',ylab = 'Number Infectious')
+
+for (sim in 2:nsim){
+  lines(Itotarr[sim,1:xlim],col = colls[sim], lwd = 2) 
 }
-? 2018 GitHub, Inc.
-Terms
-Privacy
-Security
-Status
-Help
-Contact GitHub
-Pricing
-API
-Training
-Blog
-About
-Press h to open a hovercard with more details.
