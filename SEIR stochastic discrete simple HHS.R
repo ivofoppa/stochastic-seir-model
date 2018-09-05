@@ -37,7 +37,7 @@ durEpidemic <- 300 ## Number of days in epidemic
 ## susceptibles and the newly infected (latent stage)
 nsim <- 10
 
-R0minls <- runif(nsim,1.5,2.2)
+R0minls <- runif(nsim,1.9,2.2)
 R0maxls <- sapply(R0minls, function(x) runif(1,x,2.2))
 
 for (k in seq_along(R0minls)){
