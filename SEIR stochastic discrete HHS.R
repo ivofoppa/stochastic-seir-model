@@ -18,6 +18,7 @@ specrad <- max(eigen(contactMatrix,
                      symmetric = FALSE, only.values = TRUE)$values)
 
 evec <- eigen(contactMatrix)$vectors[,1]
+evec <- evec/sum(evec)
 ## Construct population:
 populationData <- read.table('pop_reg5.dat',header = T)
 
@@ -27,23 +28,22 @@ r0 <- function(t,R0min,R0max,corr){
   return(y + R0min)
 }
 
-beta <- function(t,R0min,R0max,corr) {
-  r0(t,R0min,R0max,corr) / infectiousPeriod / specrad
+beta <- function(t,R0min,R0max,corr,infectiousPeriodMean) {
+  r0(t,R0min,R0max,corr) / infectiousPeriodMean / specrad
 }
 
-
-pSE <- function(t,Iarr_list,typePopulation,R0min,R0max,corr){ ## k is age group, I is matrix of # infectious by latent/infectious time type
+pSE <- function(t,Iarr_list,typePopulation,R0min,R0max,corr,infectiousPeriodMean){ ## k is age group, I is matrix of # infectious by latent/infectious time type
   I <- sapply(1:4, function(x) sum(unlist(Iarr_list[[x]])))
   pop <- sapply(1:4, function(x) sum(typePopulation[[x]]))
-  lambda <- beta(t,R0min,R0max,corr) * contactMatrix %*% as.numeric(I/pop)
+  lambda <- beta(t,R0min,R0max,corr,infectiousPeriodMean) * contactMatrix %*% as.numeric(I/pop)
   return (as.numeric(1-exp(-lambda)))
 }
 
-newInfect <- function(t,Iarr_list,Sarr,Earr_list,typePopulation,R0min,R0max,corr){
+newInfect <- function(t,Iarr_list,Sarr,Earr_list,typePopulation,R0min,R0max,corr,infectiousPeriodMean){
   newinfList <- list()
   Sarr2 <- Sarr
   Earr_list2 <- Earr_list
-  pinfls <- pSE(t,Iarr_list,typePopulation,R0min,R0max,corr)
+  pinfls <- pSE(t,Iarr_list,typePopulation,R0min,R0max,corr,infectiousPeriodMean)
   for (ag in 1:4){
     Sarr_ag <- Sarr[[ag]]
     Earr <- Earr_list2[[ag]]
@@ -104,47 +104,51 @@ durEpidemic <- 300
 nsim <- 10
 colls <- rainbow(nsim)
 
-simLatentPeriods <- simInfectiousPeriods <- NULL
-for (sim in 1:10){
-  latentPeriod <- runif(1,1.3,1.7)
+simLatentPeriods <- simInfectiousPeriods <- simSerialIntervals <- list()
+
+simSerialIntervals <- lapply(1:nsim, function(sim) runif(1,2.4,2.8))
+
+for (sim in 1:nsim){
+  latentPeriodMean <- runif(1,1.3,1.7)
   
   lp3 <- -1; lp2 <- -1
   while (lp3 < 0 | lp3 > 1 | lp2 < 0 | lp2 > 1 ){
     lp1 <- runif(1,.1,.9)
-    lp2 <- (latentPeriod - 3 + 2*lp1)/(-1)
+    lp2 <- (latentPeriodMean - 3 + 2*lp1)/(-1)
     lp3 <- 1 - lp1 - lp2
   }
   
   latentPeriods <- c(lp1,lp2,lp3) ## frequencies of latent period durations 1-3 days
   
   ## Combinations of infectious/latent periods (discrete) are considered "types"
-  infectiousPeriod <- runif(1,2.2,2.8)
+  infectiousPeriodMean <- 2*(simSerialIntervals[[sim]] - latentPeriodMean)
   
   ip4 <- -1; ip3 <- -1
   while (ip4 < 0 | ip4 > 1 | ip3 < 0 | ip3 > 1 ){
     ip1 <- runif(1,0,.9)
     ip2 <- runif(1,0,1 - ip1)
-    ip3 <- 4 - infectiousPeriod - 3*ip1 - 2*ip2
+    ip3 <- 4 - infectiousPeriodMean - 3*ip1 - 2*ip2
     ip4 <- 1 - ip1 - ip2 - ip3
   }
   
   infectiousPeriods <- c(ip1,ip2,ip3,ip4) ## frequencies of infectious durations 3-6 days
   
-  simLatentPeriods <- rbind(simLatentPeriods,latentPeriods,deparse.level = 0)
-  simInfectiousPeriods <- rbind(simInfectiousPeriods,infectiousPeriods,deparse.level = 0)
+  simLatentPeriods[[sim]] <- list(latentPeriodMean,latentPeriods)
+  simInfectiousPeriods[[sim]] <- list(infectiousPeriodMean,infectiousPeriods)
 }
 
 # Has the numbers of individuals by "type" by day since infection
 Itotarr <- NULL
 for (sim in 1:nsim){
 
-  R0minls <- runif(10,1.5,2.2)
+  R0minls <- runif(10,2,2.2)
   R0maxls <- sapply(R0minls, function(x) runif(1,x,2.4))
   
   corrls <- round(runif(10,64-30,64+30)) ## Random peak R0 between ~ Dec 15 and Feb 15
   
-  latentPeriods <- simLatentPeriods[sim,]
-  infectiousPeriods <- simInfectiousPeriods[sim,]
+  latentPeriods <- simLatentPeriods[[sim]][[2]]
+  infectiousPeriods <- simInfectiousPeriods[[sim]][[2]]
+  infectiousPeriodMean <- simInfectiousPeriods[[sim]][[1]]
   
   HHSEarr_list_init <-  lapply(1:10, function(hhs) lapply(HHStypePopulation[[hhs]], function(x) lapply(1:3,function(l) array(0,dim = c(length(infectiousPeriods),l)))))
   HHSIarr_list_init <-  lapply(1:10, function(hhs) lapply(HHStypePopulation[[hhs]], function(x) lapply(1:4,function(i) array(0,dim = c(length(latentPeriods),i)))))
@@ -207,40 +211,19 @@ for (sim in 1:nsim){
     }
     
     Sarr_init <- lapply(1:4,function(ag) typePopulation[[ag]] - E_init[[ag]] - I_init[[ag]])
+    Sarr <- Sarr_init
+    Earr_list <- Earr_list_init
+    Iarr_list <- Iarr_list_init
     
     time <- 1
     Ils <- NULL
-    
-    Earr_list <- parameters$HHSEarr_list_init[[hhs]]
-    Iarr_list <- parameters$HHSIarr_list_init[[hhs]]
-    
-    E_init <- list()
-    for (ag in 1:4){
-      mat <- NULL
-      for (l in 1:3){
-        mat <- cbind(mat,rowSums(Earr_list[[ag]][[l]]))
-      }
-      E_init[[ag]] <- mat
-    }
-    
-    I_init <- list()
-    for (ag in 1:4){
-      mat <- NULL
-      for (i in 1:4){
-        mat <- rbind(mat,rowSums(Iarr_list[[ag]][[i]]))
-      }
-      I_init[[ag]] <- mat
-    }
-    
-    typePopulation <- parameters$HHStypePopulation[[hhs]]
-    Sarr <- lapply(1:4, function(x) typePopulation[[x]] - I_init[[x]] - E_init[[x]]) 
-    
+
     R0min <- R0minls[hhs]
     R0max <- R0maxls[hhs]
     corr <- corrls[hhs]
     
     while (time <= durEpidemic){
-      outlist <- newInfect(t=time,Iarr_list,Sarr,Earr_list,typePopulation,R0min,R0max,corr)
+      outlist <- newInfect(t=time,Iarr_list,Sarr,Earr_list,typePopulation,R0min,R0max,corr,infectiousPeriodMean)
       Sarr <- outlist[[1]]
       Earr_list <- outlist[[2]]
       
@@ -257,7 +240,7 @@ for (sim in 1:nsim){
 }
 
 maxy <- max(Itotarr)
-xlim <- 150
+xlim <- 100
 
 colls <- rainbow(nsim)
 
