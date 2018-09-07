@@ -1,7 +1,7 @@
 ## Discrete stochastic transmission model with contact matrix
 ## Latent period (from Comflu_bas): 30% 1 day; 50% 2 days and 20% 3 days;
 ## Infectious period: 30% 3, 40% 4, 20% 5, 10% 6 days
-populationData <- read.table('pop_reg5.dat',header = T)
+populationData <- read.table('pop_HHS_4.dat',header = F)
 
 populationLabels <- c("Ages 0-4", "Ages 5-19", "Ages 20-64", "Ages 65+")
 ## This is the POLYMOD matrix for UK all contacts, regrouped
@@ -20,7 +20,6 @@ specrad <- max(eigen(contactMatrix,
 evec <- eigen(contactMatrix)$vectors[,1]
 evec <- evec/sum(evec)
 ## Construct population:
-populationData <- read.table('pop_reg5.dat',header = T)
 pop <- as.integer(colSums(populationData[,2:5]))
 populationFractions <- pop/sum(pop)
 
@@ -39,7 +38,7 @@ pSE <- function(t,I,R0min,R0max,corr,infectiousPeriod){ ## k is age group, I is 
   return (as.numeric(1-exp(-lambda)))
 }
 
-seedInf <- round(evec*100) ## number infected per age group  at beginning
+seedInf <- round(evec*300) ## number infected per age group  at beginning
 #seedInf <- round(populationFractions*1000) ## number infected per age group  at beginning; compatible with SEIR model
 
 durEpidemic <- 300 ## Number of days in epidemic
@@ -69,8 +68,8 @@ R0maxls <- sapply(R0minls, function(x) runif(1,x,2.4))
 
 corrls <- round(runif(nsim,64-30,64+30)) ## Random peak R0 between ~ Dec 15 and Feb 15
 
+Itotarr <- NULL
 sim <- 1
-
 while ( sim <= nsim ){
   R0min <- R0minls[sim]
   R0max <- R0maxls[sim]
@@ -108,19 +107,21 @@ while ( sim <= nsim ){
     
     time <- time + 1
   }
-  assign(paste0('Infectious',sim),Ils)
+  Itotarr <- rbind(Itotarr,Ils,deparse.level = 0)
   sim <- sim + 1
 }
 
 cols <- rainbow(nsim)
-xlim <- 110
-xlow <- 30
-plot(Infectious1[xlow:xlim], type = 'l',col = cols[1],xlab = 'Outbreak Day',ylab = 'Number Infectious')
+maxy <- max(Itotarr)
 
-#plot(Ils[1:150], type = 'l',col = cols[1])
+xlim <- 100
 
-for (k in 2:nsim){
-  eval(parse(text = paste0('lines(infectious',k,'[xlow:xlim],col = cols[k], type = \"l\")')))
+colls <- rainbow(nsim)
+
+plot(Itotarr[1,1:xlim],type = 'l',col = colls[1],lwd = 2,ylim = c(0,maxy),xlab = 'Outbreak Day',ylab = 'Number Infectious')
+
+for (sim in 2:nsim){
+  lines(Itotarr[sim,1:xlim],col = colls[sim], lwd = 2) 
 }
 ######################################################################################################
 ######################################################################################################

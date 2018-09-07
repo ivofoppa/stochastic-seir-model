@@ -1,7 +1,7 @@
 ## Discrete stochastic transmission model with contact matrix
 ## Latent period (from Comflu_bas): 30% 1 day; 50% 2 days and 20% 3 days;
 ## Infectious period: 30% 3, 40% 4, 20% 5, 10% 6 days
-populationData <- read.table('pop_reg5.dat',header = T)
+populationData <- read.table('pop_HHS_4.dat',header = F)
 
 populationLabels <- c("Ages 0-4", "Ages 5-19", "Ages 20-64", "Ages 65+")
 ## This is the POLYMOD matrix for UK all contacts, regrouped
@@ -20,8 +20,6 @@ specrad <- max(eigen(contactMatrix,
 evec <- eigen(contactMatrix)$vectors[,1]
 evec <- evec/sum(evec)
 ## Construct population:
-populationData <- read.table('pop_reg5.dat',header = T)
-
 ## Creating population according to latent (rows) and infectious periods (columns) in each of the age groups
 r0 <- function(t,R0min,R0max,corr){
   y <- (sin((t - corr)/365 * 2 * pi ) + 1) / 2 * (R0max - R0min)
@@ -97,8 +95,8 @@ for (hhs in 1:10){
 
 ## Seed cases of flu, by HHS
 seedInf <- rep(10,10)
-seedInf[c(2,6)] <- 500
-seedInf[c(3,4)] <- 50
+seedInf[c(2,6)] <- 100
+seedInf[c(3,4)] <- 20
 
 durEpidemic <- 300
 nsim <- 10
@@ -138,7 +136,7 @@ for (sim in 1:nsim){
 }
 
 # Has the numbers of individuals by "type" by day since infection
-Itotarr <- NULL
+Itotarr <- ARtotarr <- NULL
 for (sim in 1:nsim){
 
   R0minls <- runif(10,2,2.2)
@@ -182,8 +180,11 @@ for (sim in 1:nsim){
                      HHS_ag_seedinit=HHS_ag_seedinit)
   
   # hhs <- 2
-  HHSIarr <- NULL
+  Ntot <- sum(populationData[,2:5])
+  NHHS <- sapply(1:10,function(hhs) sum(populationData[hhs,]))
   
+  HHSIarr <- NULL
+  HHSSarr <- NULL
   
   for (hhs in 1:10){
     
@@ -216,7 +217,7 @@ for (sim in 1:nsim){
     Iarr_list <- Iarr_list_init
     
     time <- 1
-    Ils <- NULL
+    Ils <- Sls <- NULL
 
     R0min <- R0minls[hhs]
     R0max <- R0maxls[hhs]
@@ -230,16 +231,21 @@ for (sim in 1:nsim){
       Iarr_list <- dayProgI(Earr_list,Iarr_list)
       Earr_list <- dayProgE(Earr_list)
       Ils <- c(Ils,sum(unlist(Iarr_list)))
-      
+      Sls <- c(Sls,sum(unlist(Sarr)))
       time <- time + 1
     }
     HHSIarr <- rbind(HHSIarr,Ils,deparse.level = 0)
+    HHSSarr <- rbind(HHSSarr,Sls,deparse.level = 0)
   }
   Itotls <- colSums(HHSIarr)
   Itotarr <- rbind(Itotarr,Itotls, deparse.level = 0)
+
+  Stotls <- colSums(HHSSarr)
+  ARtotarr <- rbind(ARtotarr,1 - Stotls/Ntot, deparse.level = 0)
 }
 
 maxy <- max(Itotarr)
+
 xlim <- 100
 
 colls <- rainbow(nsim)
@@ -249,3 +255,11 @@ plot(Itotarr[1,1:xlim],type = 'l',col = colls[1],lwd = 2,ylim = c(0,maxy),xlab =
 for (sim in 2:nsim){
   lines(Itotarr[sim,1:xlim],col = colls[sim], lwd = 2) 
 }
+
+plot(ARtotarr[1,1:xlim],type = 'l',col = colls[1],lwd = 2,ylim = c(0,1),xlab = 'Outbreak Day',ylab = 'Attack Rate')
+
+for (sim in 2:nsim){
+  lines(ARtotarr[sim,1:xlim],col = colls[sim], lwd = 2) 
+}
+
+
