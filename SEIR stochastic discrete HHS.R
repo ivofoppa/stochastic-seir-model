@@ -135,12 +135,18 @@ for (sim in 1:nsim){
   simInfectiousPeriods[[sim]] <- list(infectiousPeriodMean,infectiousPeriods)
 }
 
+univParameters <- list(simSerialIntervals=simSerialIntervals,simLatentPeriods=simLatentPeriods,siminfectiousPeriods=siminfectiousPeriods)
+sink('univParameters.txt')
+print(univParameters)
+sink()
+
+parameterList <- list()
 # Has the numbers of individuals by "type" by day since infection
-Itotarr <- ARtotarr <- NULL
+Itotarr <- ARtotarr <- inctotarr <- NULL
 for (sim in 1:nsim){
 
-  R0minls <- runif(10,2,2.2)
-  R0maxls <- sapply(R0minls, function(x) runif(1,x,2.4))
+  R0minls <- runif(10,1.6,2.0)
+  R0maxls <- sapply(R0minls, function(x) runif(1,x,2.3))
   
   corrls <- round(runif(10,64-30,64+30)) ## Random peak R0 between ~ Dec 15 and Feb 15
   
@@ -175,9 +181,7 @@ for (sim in 1:nsim){
     HHSEarr_list_init[[hhs]] <- Earr_list_init
   }
   
-  parameters <- list(HHSEarr_list_init=HHSEarr_list_init,HHSIarr_list_init=HHSIarr_list_init,
-                     corrls=corrls,R0minls=R0minls,R0maxls=R0maxls,HHStypePopulation=HHStypePopulation,
-                     HHS_ag_seedinit=HHS_ag_seedinit)
+  parameterList[[sim]] <- list(corrls=corrls,R0minls=R0minls,R0maxls=R0maxls)
   
   # hhs <- 2
   Ntot <- sum(populationData[,2:5])
@@ -185,6 +189,7 @@ for (sim in 1:nsim){
   
   HHSIarr <- NULL
   HHSSarr <- NULL
+  HHSincarr <- NULL
   
   for (hhs in 1:10){
     
@@ -217,7 +222,7 @@ for (sim in 1:nsim){
     Iarr_list <- Iarr_list_init
     
     time <- 1
-    Ils <- Sls <- NULL
+    Ils <- Sls <- incls <- NULL
 
     R0min <- R0minls[hhs]
     R0max <- R0maxls[hhs]
@@ -227,34 +232,46 @@ for (sim in 1:nsim){
       outlist <- newInfect(t=time,Iarr_list,Sarr,Earr_list,typePopulation,R0min,R0max,corr,infectiousPeriodMean)
       Sarr <- outlist[[1]]
       Earr_list <- outlist[[2]]
+      newinf <- outlist[[3]]
       
       Iarr_list <- dayProgI(Earr_list,Iarr_list)
       Earr_list <- dayProgE(Earr_list)
       Ils <- c(Ils,sum(unlist(Iarr_list)))
       Sls <- c(Sls,sum(unlist(Sarr)))
+      incls <- c(incls,sum(unlist(newinf)))
       time <- time + 1
     }
     HHSIarr <- rbind(HHSIarr,Ils,deparse.level = 0)
     HHSSarr <- rbind(HHSSarr,Sls,deparse.level = 0)
+    HHSincarr <- rbind(HHSincarr,incls,deparse.level = 0)
   }
   Itotls <- colSums(HHSIarr)
   Itotarr <- rbind(Itotarr,Itotls, deparse.level = 0)
 
   Stotls <- colSums(HHSSarr)
   ARtotarr <- rbind(ARtotarr,1 - Stotls/Ntot, deparse.level = 0)
+  
+  inctotls <- colSums(HHSincarr)
+  inctotarr <- rbind(inctotarr,inctotls,deparse.level = 0)
 }
 
-maxy <- max(Itotarr)
+sink('ParameterList.txt')
+print(parameterList)
+sink()
+
+
+maxy <- max(inctotarr)
 
 xlim <- 100
 
 colls <- rainbow(nsim)
 
-plot(Itotarr[1,1:xlim],type = 'l',col = colls[1],lwd = 2,ylim = c(0,maxy),xlab = 'Outbreak Day',ylab = 'Number Infectious')
+plot(inctotarr[1,1:xlim],type = 'l',col = colls[1],lwd = 2,ylim = c(0,maxy),xlab = 'Outbreak Day',ylab = 'Number Infectious')
 
 for (sim in 2:nsim){
-  lines(Itotarr[sim,1:xlim],col = colls[sim], lwd = 2) 
+  lines(inctotarr[sim,1:xlim],col = colls[sim], lwd = 2) 
 }
+write.csv(t(inctotarr),'Daily incidence in 10 sims.csv')
 
 plot(ARtotarr[1,1:xlim],type = 'l',col = colls[1],lwd = 2,ylim = c(0,1),xlab = 'Outbreak Day',ylab = 'Attack Rate')
 

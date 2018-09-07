@@ -1,0 +1,127 @@
+$simSerialIntervals
+$simSerialIntervals[[1]]
+[1] 2.438744
+
+$simSerialIntervals[[2]]
+[1] 2.405387
+
+$simSerialIntervals[[3]]
+[1] 2.796848
+
+$simSerialIntervals[[4]]
+[1] 2.645296
+
+$simSerialIntervals[[5]]
+[1] 2.785166
+
+$simSerialIntervals[[6]]
+[1] 2.791942
+
+$simSerialIntervals[[7]]
+[1] 2.664944
+
+$simSerialIntervals[[8]]
+[1] 2.49431
+
+$simSerialIntervals[[9]]
+[1] 2.76802
+
+$simSerialIntervals[[10]]
+[1] 2.429816
+
+
+$simLatentPeriods
+$simLatentPeriods[[1]]
+$simLatentPeriods[[1]][[1]]
+[1] 1.676684
+
+$simLatentPeriods[[1]][[2]]
+[1] 0.38836803 0.54658012 0.06505185
+
+
+$simLatentPeriods[[2]]
+$simLatentPeriods[[2]][[1]]
+[1] 1.64021
+
+$simLatentPeriods[[2]][[2]]
+[1] 0.37893805 0.60191432 0.01914763
+
+
+$simLatentPeriods[[3]]
+$simLatentPeriods[[3]][[1]]
+[1] 1.390138
+
+$simLatentPeriods[[3]][[2]]
+[1] 0.77024469 0.06937218 0.16038314
+
+
+$simLatentPeriods[[4]]
+$simLatentPeriods[[4]][[1]]
+[1] 1.641929
+
+$simLatentPeriods[[4]][[2]]
+[1] 0.5131598 0.3317516 0.1550887
+
+
+$simLatentPeriods[[5]]
+$simLatentPeriods[[5]][[1]]
+[1] 1.44001
+
+$simLatentPeriods[[5]][[2]]
+[1] 0.65644700 0.24709610 0.09645689
+
+
+$simLatentPeriods[[6]]
+$simLatentPeriods[[6]][[1]]
+[1] 1.34597
+
+$simLatentPeriods[[6]][[2]]
+[1] 0.7682775 0.1174746 0.1142478
+
+
+$simLatentPeriods[[7]]
+$simLatentPeriods[[7]][[1]]
+[1] 1.483156
+
+$simLatentPeriods[[7]][[2]]
+[1] 0.6957605 0.1253231 0.1789164
+
+
+$simLatentPeriods[[8]]
+$simLatentPeriods[[8]][[1]]
+[1] 1.670162
+
+$simLatentPeriods[[8]][[2]]
+[1] 0.4651871 0.3994633 0.1353495
+
+
+$simLatentPeriods[[9]]
+$simLatentPeriods[[9]][[1]]
+[1] 1.419498
+
+$simLatentPeriods[[9]][[2]]
+[1] 0.78087763 0.01874694 0.20037543
+
+
+$simLatentPeriods[[10]]
+$simLatentPeriods[[10]][[1]]
+[1] 1.433784
+
+$simLatentPeriods[[10]][[2]]
+[1] 0.63174765 0.30272097 0.06553138
+
+
+
+$siminfectiousPeriods
+            [,1]      [,2]       [,3]       [,4]
+ [1,] 0.40342560 0.1121259 0.20172021 0.28272833
+ [2,] 0.39296126 0.1693021 0.26458715 0.17314952
+ [3,] 0.22424962 0.2997802 0.14827250 0.32769766
+ [4,] 0.22943877 0.1924146 0.15222985 0.42591677
+ [5,] 0.46076572 0.0264424 0.16895193 0.34383994
+ [6,] 0.38911390 0.2208776 0.10655487 0.28345361
+ [7,] 0.03961292 0.4047335 0.34870584 0.20694778
+ [8,] 0.24232542 0.3160868 0.43138172 0.01020601
+ [9,] 0.01172978 0.7604099 0.08557638 0.14228390
+[10,] 0.06735462 0.5716794 0.28607163 0.07489432
+

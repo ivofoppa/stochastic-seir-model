@@ -1,0 +1,130 @@
+$simSerialIntervals
+$simSerialIntervals[[1]]
+[1] 2.5994
+
+$simSerialIntervals[[2]]
+[1] 2.799314
+
+$simSerialIntervals[[3]]
+[1] 2.536698
+
+$simSerialIntervals[[4]]
+[1] 2.544287
+
+$simSerialIntervals[[5]]
+[1] 2.443646
+
+$simSerialIntervals[[6]]
+[1] 2.424691
+
+$simSerialIntervals[[7]]
+[1] 2.533449
+
+$simSerialIntervals[[8]]
+[1] 2.553577
+
+$simSerialIntervals[[9]]
+[1] 2.428676
+
+$simSerialIntervals[[10]]
+[1] 2.707087
+
+
+$simLatentPeriods
+$simLatentPeriods[[1]]
+$simLatentPeriods[[1]][[1]]
+[1] 1.483344
+
+$simLatentPeriods[[1]][[2]]
+[1] 0.55023526 0.41618506 0.03357968
+
+
+$simLatentPeriods[[2]]
+$simLatentPeriods[[2]][[1]]
+[1] 1.523114
+
+$simLatentPeriods[[2]][[2]]
+[1] 0.6776438 0.1215985 0.2007577
+
+
+$simLatentPeriods[[3]]
+$simLatentPeriods[[3]][[1]]
+[1] 1.699079
+
+$simLatentPeriods[[3]][[2]]
+[1] 0.5284745 0.2439723 0.2275532
+
+
+$simLatentPeriods[[4]]
+$simLatentPeriods[[4]][[1]]
+[1] 1.362217
+
+$simLatentPeriods[[4]][[2]]
+[1] 0.79949058 0.03880193 0.16170749
+
+
+$simLatentPeriods[[5]]
+$simLatentPeriods[[5]][[1]]
+[1] 1.642221
+
+$simLatentPeriods[[5]][[2]]
+[1] 0.5289146 0.2999495 0.1711359
+
+
+$simLatentPeriods[[6]]
+$simLatentPeriods[[6]][[1]]
+[1] 1.538771
+
+$simLatentPeriods[[6]][[2]]
+[1] 0.50810942 0.44501035 0.04688023
+
+
+$simLatentPeriods[[7]]
+$simLatentPeriods[[7]][[1]]
+[1] 1.361151
+
+$simLatentPeriods[[7]][[2]]
+[1] 0.6935003 0.2518488 0.0546509
+
+
+$simLatentPeriods[[8]]
+$simLatentPeriods[[8]][[1]]
+[1] 1.650416
+
+$simLatentPeriods[[8]][[2]]
+[1] 0.5247086 0.3001670 0.1751244
+
+
+$simLatentPeriods[[9]]
+$simLatentPeriods[[9]][[1]]
+[1] 1.558166
+
+$simLatentPeriods[[9]][[2]]
+[1] 0.6539371 0.1339599 0.2121030
+
+
+$simLatentPeriods[[10]]
+$simLatentPeriods[[10]][[1]]
+[1] 1.356165
+
+$simLatentPeriods[[10]][[2]]
+[1] 0.647567996 0.348698515 0.003733489
+
+
+
+$siminfectiousPeriods
+            [,1]      [,2]       [,3]       [,4]
+ [1,] 0.40342560 0.1121259 0.20172021 0.28272833
+ [2,] 0.39296126 0.1693021 0.26458715 0.17314952
+ [3,] 0.22424962 0.2997802 0.14827250 0.32769766
+ [4,] 0.22943877 0.1924146 0.15222985 0.42591677
+ [5,] 0.46076572 0.0264424 0.16895193 0.34383994
+ [6,] 0.38911390 0.2208776 0.10655487 0.28345361
+ [7,] 0.03961292 0.4047335 0.34870584 0.20694778
+ [8,] 0.24232542 0.3160868 0.43138172 0.01020601
+ [9,] 0.01172978 0.7604099 0.08557638 0.14228390
+[10,] 0.06735462 0.5716794 0.28607163 0.07489432
+
+$HHSfact
+[1] 0
+
