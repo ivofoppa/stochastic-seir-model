@@ -97,6 +97,8 @@ for (sim in 1:nsim){
   newRemarr <- rbind(newRemarr, newRemls,deparse.level = 0)
 }
 
+library(flumodels)
+
 model <- SEIRModel(R0 = R0,
                    latentPeriod = 1.5,
                    infectiousPeriod = 2.5,
@@ -104,13 +106,6 @@ model <- SEIRModel(R0 = R0,
                    simulationLength = 300,priorImmunity = 0,
                    population = Ntot,populationFractions = populationFractions,
                    contactMatrix = contactMatrix)
-
-
-modelTimes <- model$rawOutput[, "time"]
-modelInfections <- getInfectionTimeSeries(model, byGroup = FALSE)
-modelSusceptibles <- getSus
-selind <- which(modelTimes <= 150)
-plot(modelTimes[selind],modelInfections[selind],type = 'l')
 
 
 #########################################################################################
@@ -192,8 +187,8 @@ state <- c(S1=S10,E1=E10,I1=I10,R1=R10,
            S2=S20,E2=E20,I2=I20,R2=R20,
            S3=S30,E3=E30,I3=I30,R3=R30,
            S4=S40,E4=E40,I4=I40,R4=R40)
-times <- seq(0,durEpidemic,.01)
-out <- data.frame(ode(y = state, times = times, func = SEIRmod, parms = parameters))
+times <- seq(0,durEpidemic,deltat)
+out <- data.frame(ode(y = state, times = times, func = SEIRmod, parms = parameters, method = lsoda))
 
 SEIRIls <- (out$I1 + out$I2 + out$I3 + out$I4)
 SEIRSls <- (out$S1 + out$S2 + out$S3 + out$S4)
@@ -206,26 +201,18 @@ ymax <- max(c(Iarr,SEIRIls))
 # ymax <- max(c(Sarr,SEIRSls))
 colls <- rainbow(nsim)
 
+
+modelTimes <- model$rawOutput[, "time"]
+modelInfections <- getInfectionTimeSeries(model, byGroup = FALSE)
+selind <- which(modelTimes <= 150)
+
+plot(modelTimes[selind],modelInfections[selind],type = 'l',xlab = 'Outbreak Day',ylab = 'Number Infectious', col = 'blue')
+
 plot(times[selind],SEIRIls[selind],xlab = 'Outbreak Day',ylab = 'Number Infectious',type = 'l', col = 'blue',xlim = c(0,toTime),ylim = c(0,ymax))
 for (sim in 1:10){
  lines(seq(deltat,toTime,deltat),Iarr[sim,seq(deltat,toTime,deltat)/deltat],lwd = 1, col = colls[sim])
 }
 
-plot(Ils,col = 'green')
 #########################################################################################
 #########################################################################################
 #########################################################################################
-library(flumodels)
-
-Ntot <- sum(pop)
-
-model <- SEIRModel(R0 = 1.6,
-                   latentPeriod = 1.5,
-                   infectiousPeriod = 2.5,
-                   seedInfections = seedInfections,
-                   simulationLength = 300,priorImmunity = 0,
-                   population = Ntot,populationFractions = populationFractions,contactMatrix = contactMatrix)
-
-
-modelTimes <- model$rawOutput[, "time"]
-modelInfections <- getInfectionTimeSeries(model, byGroup = FALSE)
