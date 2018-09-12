@@ -1,114 +1,114 @@
 $simSerialIntervals
 $simSerialIntervals[[1]]
-[1] 2.438744
+[1] 2.5994
 
 $simSerialIntervals[[2]]
-[1] 2.405387
+[1] 2.799314
 
 $simSerialIntervals[[3]]
-[1] 2.796848
+[1] 2.536698
 
 $simSerialIntervals[[4]]
-[1] 2.645296
+[1] 2.544287
 
 $simSerialIntervals[[5]]
-[1] 2.785166
+[1] 2.443646
 
 $simSerialIntervals[[6]]
-[1] 2.791942
+[1] 2.424691
 
 $simSerialIntervals[[7]]
-[1] 2.664944
+[1] 2.533449
 
 $simSerialIntervals[[8]]
-[1] 2.49431
+[1] 2.553577
 
 $simSerialIntervals[[9]]
-[1] 2.76802
+[1] 2.428676
 
 $simSerialIntervals[[10]]
-[1] 2.429816
+[1] 2.707087
 
 
 $simLatentPeriods
 $simLatentPeriods[[1]]
 $simLatentPeriods[[1]][[1]]
-[1] 1.676684
+[1] 1.483344
 
 $simLatentPeriods[[1]][[2]]
-[1] 0.38836803 0.54658012 0.06505185
+[1] 0.55023526 0.41618506 0.03357968
 
 
 $simLatentPeriods[[2]]
 $simLatentPeriods[[2]][[1]]
-[1] 1.64021
+[1] 1.523114
 
 $simLatentPeriods[[2]][[2]]
-[1] 0.37893805 0.60191432 0.01914763
+[1] 0.6776438 0.1215985 0.2007577
 
 
 $simLatentPeriods[[3]]
 $simLatentPeriods[[3]][[1]]
-[1] 1.390138
+[1] 1.699079
 
 $simLatentPeriods[[3]][[2]]
-[1] 0.77024469 0.06937218 0.16038314
+[1] 0.5284745 0.2439723 0.2275532
 
 
 $simLatentPeriods[[4]]
 $simLatentPeriods[[4]][[1]]
-[1] 1.641929
+[1] 1.362217
 
 $simLatentPeriods[[4]][[2]]
-[1] 0.5131598 0.3317516 0.1550887
+[1] 0.79949058 0.03880193 0.16170749
 
 
 $simLatentPeriods[[5]]
 $simLatentPeriods[[5]][[1]]
-[1] 1.44001
+[1] 1.642221
 
 $simLatentPeriods[[5]][[2]]
-[1] 0.65644700 0.24709610 0.09645689
+[1] 0.5289146 0.2999495 0.1711359
 
 
 $simLatentPeriods[[6]]
 $simLatentPeriods[[6]][[1]]
-[1] 1.34597
+[1] 1.538771
 
 $simLatentPeriods[[6]][[2]]
-[1] 0.7682775 0.1174746 0.1142478
+[1] 0.50810942 0.44501035 0.04688023
 
 
 $simLatentPeriods[[7]]
 $simLatentPeriods[[7]][[1]]
-[1] 1.483156
+[1] 1.361151
 
 $simLatentPeriods[[7]][[2]]
-[1] 0.6957605 0.1253231 0.1789164
+[1] 0.6935003 0.2518488 0.0546509
 
 
 $simLatentPeriods[[8]]
 $simLatentPeriods[[8]][[1]]
-[1] 1.670162
+[1] 1.650416
 
 $simLatentPeriods[[8]][[2]]
-[1] 0.4651871 0.3994633 0.1353495
+[1] 0.5247086 0.3001670 0.1751244
 
 
 $simLatentPeriods[[9]]
 $simLatentPeriods[[9]][[1]]
-[1] 1.419498
+[1] 1.558166
 
 $simLatentPeriods[[9]][[2]]
-[1] 0.78087763 0.01874694 0.20037543
+[1] 0.6539371 0.1339599 0.2121030
 
 
 $simLatentPeriods[[10]]
 $simLatentPeriods[[10]][[1]]
-[1] 1.433784
+[1] 1.356165
 
 $simLatentPeriods[[10]][[2]]
-[1] 0.63174765 0.30272097 0.06553138
+[1] 0.647567996 0.348698515 0.003733489
 
 
 
@@ -124,4 +124,7 @@ $siminfectiousPeriods
  [8,] 0.24232542 0.3160868 0.43138172 0.01020601
  [9,] 0.01172978 0.7604099 0.08557638 0.14228390
 [10,] 0.06735462 0.5716794 0.28607163 0.07489432
+
+$HHSfact
+[1] 0.001
 
